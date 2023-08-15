@@ -22,6 +22,25 @@ def communicability(matrix):
     pass
 
 def shortest_path_length(matrix):
+    
+    # Binarize the matrix and convert to float
+    A = (matrix != 0).astype(float)
+    
+    l = 1
+    Lpath = A.copy()
+    D = A.copy()
+    
+    Idx = np.ones_like(A, dtype=bool)
+    
+    while Idx.any():
+        l += 1
+        Lpath = np.dot(Lpath, A)
+        Idx = (Lpath != 0) & (D == 0)
+        D[Idx] = l
+
+    # Assign infinity to disconnected nodes
+
+    # Clear diagonal (set to 0)
     pass
 
 
