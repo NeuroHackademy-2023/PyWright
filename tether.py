@@ -22,7 +22,7 @@ def communicability(matrix):
     pass
 
 def shortest_path_length(matrix):
-    
+    #Algebraic shortest paths
     # Binarize the matrix and convert to float
     A = (matrix != 0).astype(float)
     
@@ -45,7 +45,6 @@ def shortest_path_length(matrix):
     np.fill_diagonal(D, 0)
     
     return D
-    pass
 
 
 def tether(func_mats, struct_mats, matrices_functions=[], get_r=True, prediction_method='linear'):
