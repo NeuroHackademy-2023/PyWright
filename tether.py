@@ -34,13 +34,17 @@ def shortest_path_length(matrix):
     
     while Idx.any():
         l += 1
-        Lpath = np.dot(Lpath, A)
+        Lpath = np.dot(Lpath, A)  
         Idx = (Lpath != 0) & (D == 0)
         D[Idx] = l
 
     # Assign infinity to disconnected nodes
-
+    D[D == 0] = float('inf')
+    
     # Clear diagonal (set to 0)
+    np.fill_diagonal(D, 0)
+    
+    return D
     pass
 
 
