@@ -12,6 +12,19 @@ def get_predictor_vectors(mats, nodes):
 def predict_function(predictors, functional, prediction_method):
     pass
 
+def get_r_values(node_prediction, functional):
+    pass
+
+def euclidean_distance(parcellation):
+    pass
+
+def communicability(matrix):
+    pass
+
+def shortest_path_length(matrix):
+    pass
+
+
 def tether(func_mats, struct_mats, matrices_functions=[], get_r=True, prediction_method='linear'):
     # this function will take a structural matrix and a fuctional matrix and create a
     # connectivity matrix based on the Vazquez-Rodrıguez et al. 2019, PNAS
@@ -31,7 +44,7 @@ def tether(func_mats, struct_mats, matrices_functions=[], get_r=True, prediction
         # run regression
         node_prediction = predict_function(predictors, functional, prediction_method)
         if get_r:
-            r_values.append(pearsonr(node_prediction, functional))
+            r_values.append(get_r_values(node_prediction, functional))
         node_predictions.append(node_prediction)
     if get_r:
         return node_predictions, r_values
