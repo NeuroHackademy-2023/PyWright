@@ -18,14 +18,26 @@ def get_r_values(node_prediction, functional):
 def euclidean_distance(parcellation):
     pass
 
-def communicability(matrix):
-    pass
+def communicability(adjmat, normalize=False):
+    #  weighted  sum  of  all  paths  and  walks  between those  nodes
+    #  takes binarized structural connectome (adjacency matrix)
+    
+    if not np.any(np.logical_or(adjmat == 0, adjmat == 1)):
+        raise ValueError('Input matrix must be binary.')
+
+    # normalize by largest eigenvalue (prevents extremely large values)
+    if normalize:
+        norm = np.linalg.eigvals(adjmat).max()
+        adjmat = adjmat / norm
+
+    # expm from scipy.linalg computes the matrix exponential using Padé approximation (definition of )
+    return expm(adjmat)
 
 def shortest_path_length(matrix):
     pass
 
 
-def tether(func_mats, struct_mats, matrices_functions=[], get_r=True, prediction_method='linear'):
+def tether(func_mats, struct_mats, matrices_functions=[], get_r2=True, prediction_method='linear'):
     # this function will take a structural matrix and a fuctional matrix and create a
     # connectivity matrix based on the Vazquez-Rodrıguez et al. 2019, PNAS
     # method
@@ -36,7 +48,7 @@ def tether(func_mats, struct_mats, matrices_functions=[], get_r=True, prediction
     # then run the regression and get the r value
     n_nodes = np.shape(func_mats)[1]
     node_predictions = []
-    if get_r:
+    if get_r2:
         r_values = []
     for node in range(n_nodes):
         predictors = get_predictor_vectors(mats, node)
@@ -46,7 +58,7 @@ def tether(func_mats, struct_mats, matrices_functions=[], get_r=True, prediction
         if get_r:
             r_values.append(get_r_values(node_prediction, functional))
         node_predictions.append(node_prediction)
-    if get_r:
+    if get_r2:
         return node_predictions, r_values
     else:
         return node_predictions
