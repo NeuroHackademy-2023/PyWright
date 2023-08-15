@@ -22,6 +22,24 @@ def communicability(matrix):
     pass
 
 def shortest_path_length(matrix):
+    """
+    Compute the distance matrix for a binary directed/undirected connection matrix.
+    
+    The distance matrix contains lengths of shortest paths between all pairs of nodes. 
+
+    
+    Parameters:
+    - matrix: numpy array, binary directed/undirected connection matrix
+    
+    Returns:
+    - D: numpy array, distance matrix
+    """
+    
+    # Binarize the matrix and convert to float
+
+    # Assign infinity to disconnected nodes
+
+    # Clear diagonal (set to 0)
     pass
 
 
