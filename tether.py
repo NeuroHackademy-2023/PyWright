@@ -3,6 +3,21 @@
 
 import numpy as np
 from scipy.stats import pearsonr
+from netneurotools.network import struct_consensus
+def group_consensus_mats(func_mats, sc_mats):
+     
+     # compute group-consensus FC matrix by averaging all individual matrices
+
+     group_fcmat = np.mean(func_mats, axis=2)
+
+    # compute group-consensus SC matrix using previously-established methods
+    (data, distance, hemiid, weighted=False)
+     group_scmat = struct_consensus(data = sc_mats,
+                                    distance = dist_mat,
+                                    hemiid = , # N x 1 dimensional array, 0s and 1s for LH and RH (needs to be input by user or hard-coded for each atlas)
+                                    weighted = False)
+
+
 def make_matrix(mat_function, struct_mat):
     pass
 
@@ -18,7 +33,7 @@ def get_r_values(node_prediction, functional):
 def euclidean_distance(parcellation):
     pass
 
-def communicability(adjmat, normalize=False):
+def communicability(group_scmat, normalize=False):
     #  weighted  sum  of  all  paths  and  walks  between those  nodes
     #  takes binarized structural connectome (adjacency matrix)
     
@@ -30,7 +45,7 @@ def communicability(adjmat, normalize=False):
         norm = np.linalg.eigvals(adjmat).max()
         adjmat = adjmat / norm
 
-    # expm from scipy.linalg computes the matrix exponential using Padé approximation (definition of )
+    # expm from scipy.linalg computes the matrix exponential using Padé approximation
     return expm(adjmat)
 
 def shortest_path_length(matrix):
@@ -38,9 +53,9 @@ def shortest_path_length(matrix):
 
 
 def tether(func_mats, struct_mats, matrices_functions=[], get_r2=True, prediction_method='linear'):
-    # this function will take a structural matrix and a fuctional matrix and create a
+    # this function will take a group-consensus tructural matrix and a group-consensus fuctional matrix and create a
     # connectivity matrix based on the Vazquez-Rodrıguez et al. 2019, PNAS
-    # method
+
     mats = []
     for subject in struct_mats:
         mats.append([make_matrix(mat_func, struct_mats) for mat_func in matrices_functions])
