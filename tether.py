@@ -4,18 +4,24 @@
 import numpy as np
 from scipy.stats import pearsonr
 from netneurotools.network import struct_consensus
-def group_consensus_mats(func_mats, sc_mats):
+def group_consensus_mats(func_mats, sc_mats, atlas_hemiid):
      
-     # compute group-consensus FC matrix by averaging all individual matrices
+    # function to compute group-consensus FC and SC connectivity matrices from individual matrices
+    # inputs are a 3D NxNxs FC matrix, a 3D NxNxs SC matrix, and N x 1 vector (needs to be input by user)
+    # alternatively: can hard-coded for each atlas this input for several common atlases and have user select atlas instead
 
+    if not atlas_hemiid:
+        raise ValueError('need `atlas_hemiid` argument, a N x 1 dimensional array with 0s and 1s for left- and right- hemisphere')
+    
+    # compute group-consensus FC matrix by averaging all individual matrices
      group_fcmat = np.mean(func_mats, axis=2)
 
-    # compute group-consensus SC matrix using previously-established methods
-    (data, distance, hemiid, weighted=False)
-     group_scmat = struct_consensus(data = sc_mats,
+    # compute group-consensus SC matrix using neurotools from Masic lab @ McGill
+    group_scmat = struct_consensus(data = sc_mats,
                                     distance = dist_mat,
-                                    hemiid = , # N x 1 dimensional array, 0s and 1s for LH and RH (needs to be input by user or hard-coded for each atlas)
+                                    hemiid = atlas_hemiid,
                                     weighted = False)
+    return group_fcmat, group_scmat
 
 
 def make_matrix(mat_function, struct_mat):
@@ -35,7 +41,7 @@ def euclidean_distance(parcellation):
 
 def communicability(group_scmat, normalize=False):
     #  weighted  sum  of  all  paths  and  walks  between those  nodes
-    #  takes binarized structural connectome (adjacency matrix)
+    #  takes group-consensus SC matrix
     
     if not np.any(np.logical_or(adjmat == 0, adjmat == 1)):
         raise ValueError('Input matrix must be binary.')
