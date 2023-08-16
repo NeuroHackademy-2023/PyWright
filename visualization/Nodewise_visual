@@ -1,32 +1,29 @@
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-def plot_3d_connectivity(coords, matrix, threshold=0.5):
-    """
-    Plots a 3D connectivity map based on given coordinates and matrix
-    :param coords: Node coordinates for plotting in 3D space. Nx3 matrix.
-    :param matrix: Connectivity matrix. NxN.
-    :param threshold: Only connections stronger than this threshold will be plotted.
-    """
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+# Mock data
+np.random.seed(42)
+coords = np.random.rand(100, 3) * 2 - 1
+rand_mat = np.random.rand(100, 100)
+group_fcmat = (rand_mat + rand_mat.T) / 2
 
-    # Plot nodes
-    ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='r', marker='o')
+# Extract coordinates
+x, y, z = zip(*coords)
 
-    # Plot edges based on threshold
-    for i in range(matrix.shape[0]):
-        for j in range(matrix.shape[1]):
-            if matrix[i, j] > threshold:
-                ax.plot([coords[i, 0], coords[j, 0]],
-                        [coords[i, 1], coords[j, 1]],
-                        [coords[i, 2], coords[j, 2]], 'b-')
+# Visualize
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
 
-    plt.show()
+# Plot nodes
+ax.scatter(x, y, z, s=50, c='red')
 
-# Example usage
-parcellation_path = "path_to_your_parcellation_file"
-parcellation = nib.load(parcellation_path)
-coords = nl.find_parcellation_cut_coords(parcellation)
-conn_matrix = group_consensus_mats(func_mats, sc_mats, atlas_hemiid, dist_mat)[1] # For structural matrix. Change index to 0 for functional.
-plot_3d_connectivity(coords, conn_matrix)
+# Plot edges based on connectivity strength
+threshold = 0.9  # Adjust as needed
+for i in range(len(coords)):
+    for j in range(len(coords)):
+        if group_fcmat[i, j] > threshold:
+            ax.plot([x[i], x[j]], [y[i], y[j]], [z[i], z[j]], color='blue', alpha=0.1)
+
+ax.set_title("3D Connectivity Visualization with Mock Data")
+plt.show()
