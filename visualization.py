@@ -1,3 +1,7 @@
+# This file creates a figure of the spatial distribution of structure-function correspondence based on
+# Vazquez-Rodríguez et al. 2019, PNAS. Assistance provided by ChatGPT-4. 
+# Created for Neurohackademy 2023.
+
 import numpy as np
 import matplotlib.pyplot as plt
 
