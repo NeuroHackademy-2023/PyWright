@@ -5,15 +5,19 @@ import numpy as np
 import nilearn as nl
 from sklearn.linear_model import LinearRegression
 import nibabel as nib
-
-from scipy.stats import pearsonr
 from netneurotools.network import struct_consensus
-def group_consensus_mats(func_mats, sc_mats, atlas_hemiid):
-     
-    # function to compute group-consensus FC and SC connectivity matrices from individual matrices
-    # inputs are a 3D NxNxs FC matrix, a 3D NxNxs SC matrix, and N x 1 vector (needs to be input by user)
-    # alternatively: can hard-coded for each atlas this input for several common atlases and have user select atlas instead
+from scipy.linalg import expm
+import networkx as nx
 
+def group_consensus_mats(func_mats, sc_mats, atlas_hemiid, dist_mat):
+    """
+    this function will take a list of functional matrices and a list of structural matrices and return the grouped
+    comcemus matrices for each ome.
+    :param func_mats: inputs are a 3D NxNxs FC matrix
+    :param sc_mats: a 3D NxNxs SC matrix
+    :param atlas_hemiid: a vector of length N that has 0s for left hemisphere and 1s for right hemisphere
+    :return: a 2D NxN group consensus FC matrix and a 2D NxN group consensus SC matrix
+    """
     if not atlas_hemiid:
         raise ValueError('need `atlas_hemiid` argument, a N x 1 dimensional array with 0s and 1s for left- and right- hemisphere')
     
@@ -29,12 +33,26 @@ def group_consensus_mats(func_mats, sc_mats, atlas_hemiid):
 
 
 def get_predictor_vectors(mats, nodes):
+    """this function will take a list of matrices and a node number and return a vector for each matrix with the values
+    for that node
+    :param mats: list of structural matrices used to predict functional matrices. these have to be the same size and
+    with the same order of nodes.
+    :param nodes: node number to get the values for
+    :return: a vector for each matrix with the values for the connection of that node to all other nodes"""
     # gets list of matrices and a node number
     # returns a vector for each matrix with the values for that node
     return [mat[:, nodes] for mat in mats]
 
   
 def predict_function(predictors, functional, prediction_method, return_model=True):
+    """this function will take a list of structural predictors and a functional matrix and return a predicted
+    functional matrix
+    :param predictors: list of vectors for each structural matrix with the values for the connection of that
+    node to all other nodes
+    :param functional: a vector of functional values for each node's connection to all other nodes
+    :param prediction_method: the method to use for prediction. currently only linear regression is implemented
+    :return: a predicted functional matrix"""
+
     # standarize predictors
     predictors = [predictor - np.mean(predictor)/np.std(predictor) for predictor in predictors]
     # fit multiple linear regression
@@ -50,29 +68,35 @@ def predict_function(predictors, functional, prediction_method, return_model=Tru
 
 
 
-def get_r_values(model, functional, score_method='r_squared'):
-    # get r squared values for the model
-    return model.score(functional, score_method)
-
 def euclidean_distance(parcellation):
     """
-    This function will take a parcellation and return a matrix of the euclidean distance between each node
-    input: parcellation file path (string)
-    output: matrix of euclidean distance between each node (numpy array)
+    This function will take a parcellation and return a matrix of the euclidean distance between each pair of nodes
+    :param parcellation: path to a parcellation file or a nibabel image object
+    :return: a matrix of the euclidean distance between each pair of nodes
+
     """
-    coords = nl.find_parcellation_cut_coords(nib.load(parcellation))
+    if isinstance(parcellation, str):
+        parcellation = nib.load(parcellation)
+    coords = nl.find_parcellation_cut_coords(parcellation)
     dist_mat = []
     # for each node in the parcellation, calculate the distance to each other node
     for node in coords:
         dist_mat.append([np.linalg.norm(node - other_node) for other_node in coords])
     return np.array(dist_mat)
 
-def communicability(group_scmat, normalize=False):
-    #  weighted  sum  of  all  paths  and  walks  between those  nodes
-    #  takes group-consensus SC matrix
+def communicability(adjmat, normalize=False, thresh=0):
+    """
+    This function will take an adjacency matrix and return a communicability matrix
+    the communicability matrix is the weighted  sum  of  all  paths  and  walks  between all pairs of nodes
+    :param adjmat:
+    :param normalize:
+    :return:
+    """
     
-    if not np.any(np.logical_or(adjmat == 0, adjmat == 1)):
-        raise ValueError('Input matrix must be binary.')
+    if not np.any(np.logical_or(adjmat == 0, adjmat == 0)):
+        # binarize the matrix and print a warning
+        print(f'Input matrix is not binary. Converting to binary with threshold {thresh}.')
+        adjmat = (adjmat > thresh).astype(int)
 
     # normalize by largest eigenvalue (prevents extremely large values)
     if normalize:
@@ -82,40 +106,50 @@ def communicability(group_scmat, normalize=False):
     # expm from scipy.linalg computes the matrix exponential using Padé approximation
     return expm(adjmat)
 
-def shortest_path_length(matrix):
-    #Algebraic shortest paths
-    # Binarize the matrix and convert to float
-    A = (matrix != 0).astype(float)
-    
-    l = 1
-    Lpath = A.copy()
-    D = A.copy()
-    
-    Idx = np.ones_like(A, dtype=bool)
-    
-    while Idx.any():
-        l += 1
-        Lpath = np.dot(Lpath, A)  
-        Idx = (Lpath != 0) & (D == 0)
-        D[Idx] = l
+def shortest_path_length(matrix, threshold=-1):
+    """this function will take a matrix and return a matrix of the shortest path length between each pair of nodes
+    :param matrix: a matrix of the connection strength between each pair of nodes
+    :param threshold: the threshold to use for binarizing the matrix. if -1, the matrix will not be binarized
+    :return: a matrix of the shortest path length between each pair of nodes"""
 
-    # Assign infinity to disconnected nodes
-    D[D == 0] = float('inf')
-    
-    # Clear diagonal (set to 0)
-    np.fill_diagonal(D, 0)
-    
-    return D
+    if threshold == -1:
+        pass
+    else:
+        matrix = (matrix > threshold).astype(int)
+
+    # compute the shortest path pairs and convert them back to a matrix
+    return nx.floyd_warshall_numpy(nx.from_numpy_matrix(matrix))
 
 
 
-def tether(func_mats, struct_mats, parcellation, matrices_functions=[], get_r=True, prediction_method='linear',
+
+
+def tether(func_mats, struct_mats, parcellation, atlas_metadata, hemi_col="Hemi",
+           matrices_functions=(communicability, shortest_path_length), get_r2=True, prediction_method='linear',
            include_eucledian=True):
-    # this function will take a structural matrix and a fuctional matrix and create a
-    # connectivity matrix based on the Vazquez-Rodrıguez et al. 2019, PNAS
-    # method
+    """
+    this function will take a structural matrix and a fuctional matrix and create a predicted functional
+    connectivity matrix and r squared for the prediction based on the Vazquez-Rodrıguez et al. 2019, PNAS
+    method. the matrices used for the prediction are graph metrics derived from the structural matrix.
+    :param func_mats: all subject's functional matrices, NXNXS
+    :param struct_mats: all subject's functional matrices, NXNXS
+    :param parcellation: the parcellation used to create the matrices, in MNI space
+    :param atlas_metadata: a dataframe with the metadata for the parcellation, one column should include the hemisphere
+    marked as L or R
+    :param hemi_col: the column header for the hemisphere column in the metadata. default is "Hemi"
+    :param matrices_functions: a list of functions to apply to the structural matrices before using them to predict the
+    default is communicability and shortest path length. these functions should take a matrix as input and return a
+    matrix of the same size.
+    :param get_r2: boolean, whether to return the r squared value for the prediction. default is True
+    :param prediction_method: string, the method to use for prediction. currently only linear regression is implemented
+    :param include_eucledian: boolean, whether to include the eucledian distance matrix as a predictor. default is True
+    :return: either a list of predicted functional matrices or a list of predicted functional matrices and a list of r
+    squared values
+    """
+
+    atlas_hemiid = atlas_metadata[hemi_col] == 'R'
     eucledian_matrix = euclidean_distance(parcellation)
-    func_group_mat, struct_group_mat = group_concensus_maps(func_mats, struct_mats)
+    func_group_mat, struct_group_mat = group_consensus_mats(func_mats, struct_mats, atlas_hemiid, eucledian_matrix)
 
     mats = [mat_func(struct_group_mat) for mat_func in matrices_functions]
     if include_eucledian:
@@ -131,9 +165,9 @@ def tether(func_mats, struct_mats, parcellation, matrices_functions=[], get_r=Tr
         predictors = get_predictor_vectors(mats, node)
         functional_truth = func_mats[:, node]
         # run regression
-        node_prediction = predict_function(predictors, functional_truth, prediction_method, return_model=get_r)
-        if get_r:
-            r_values.append(get_r_values(node_prediction[0], functional_truth))
+        node_prediction = predict_function(predictors, functional_truth, prediction_method, return_model=get_r2)
+        if get_r2:
+            r_values.append(node_prediction[0].score(functional_truth))
             node_prediction = node_prediction[1]
         node_predictions.append(node_prediction)
     if get_r2:
