@@ -1,0 +1,32 @@
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+def plot_3d_connectivity(coords, matrix, threshold=0.5):
+    """
+    Plots a 3D connectivity map based on given coordinates and matrix
+    :param coords: Node coordinates for plotting in 3D space. Nx3 matrix.
+    :param matrix: Connectivity matrix. NxN.
+    :param threshold: Only connections stronger than this threshold will be plotted.
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot nodes
+    ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], c='r', marker='o')
+
+    # Plot edges based on threshold
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            if matrix[i, j] > threshold:
+                ax.plot([coords[i, 0], coords[j, 0]],
+                        [coords[i, 1], coords[j, 1]],
+                        [coords[i, 2], coords[j, 2]], 'b-')
+
+    plt.show()
+
+# Example usage
+parcellation_path = "path_to_your_parcellation_file"
+parcellation = nib.load(parcellation_path)
+coords = nl.find_parcellation_cut_coords(parcellation)
+conn_matrix = group_consensus_mats(func_mats, sc_mats, atlas_hemiid, dist_mat)[1] # For structural matrix. Change index to 0 for functional.
+plot_3d_connectivity(coords, conn_matrix)
