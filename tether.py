@@ -2,6 +2,10 @@
 # Vazquez-Rodrıguez et al. 2019, PNAS, created for Neurohackademy 2023
 
 import numpy as np
+import nilearn as nl
+from sklearn.linear_model import LinearRegression
+import nibabel as nib
+
 from scipy.stats import pearsonr
 from netneurotools.network import struct_consensus
 def group_consensus_mats(func_mats, sc_mats, atlas_hemiid):
@@ -24,20 +28,44 @@ def group_consensus_mats(func_mats, sc_mats, atlas_hemiid):
     return group_fcmat, group_scmat
 
 
-def make_matrix(mat_function, struct_mat):
-    pass
-
 def get_predictor_vectors(mats, nodes):
-    pass
+    # gets list of matrices and a node number
+    # returns a vector for each matrix with the values for that node
+    return [mat[:, nodes] for mat in mats]
 
-def predict_function(predictors, functional, prediction_method):
-    pass
+  
+def predict_function(predictors, functional, prediction_method, return_model=True):
+    # standarize predictors
+    predictors = [predictor - np.mean(predictor)/np.std(predictor) for predictor in predictors]
+    # fit multiple linear regression
+    if prediction_method == 'linear':
+        model = LinearRegression()
+    else:
+        raise TypeError(f'{prediction_method} not implemented for prediction method')
+    model.fit(predictors, functional)
+    # predict functional values
+    if return_model:
+        return model, model.predict(predictors)
+    return model.predict(predictors)
 
-def get_r_values(node_prediction, functional):
-    pass
+
+
+def get_r_values(model, functional, score_method='r_squared'):
+    # get r squared values for the model
+    return model.score(functional, score_method)
 
 def euclidean_distance(parcellation):
-    pass
+    """
+    This function will take a parcellation and return a matrix of the euclidean distance between each node
+    input: parcellation file path (string)
+    output: matrix of euclidean distance between each node (numpy array)
+    """
+    coords = nl.find_parcellation_cut_coords(nib.load(parcellation))
+    dist_mat = []
+    # for each node in the parcellation, calculate the distance to each other node
+    for node in coords:
+        dist_mat.append([np.linalg.norm(node - other_node) for other_node in coords])
+    return np.array(dist_mat)
 
 def communicability(group_scmat, normalize=False):
     #  weighted  sum  of  all  paths  and  walks  between those  nodes
@@ -55,16 +83,44 @@ def communicability(group_scmat, normalize=False):
     return expm(adjmat)
 
 def shortest_path_length(matrix):
-    pass
+    #Algebraic shortest paths
+    # Binarize the matrix and convert to float
+    A = (matrix != 0).astype(float)
+    
+    l = 1
+    Lpath = A.copy()
+    D = A.copy()
+    
+    Idx = np.ones_like(A, dtype=bool)
+    
+    while Idx.any():
+        l += 1
+        Lpath = np.dot(Lpath, A)  
+        Idx = (Lpath != 0) & (D == 0)
+        D[Idx] = l
+
+    # Assign infinity to disconnected nodes
+    D[D == 0] = float('inf')
+    
+    # Clear diagonal (set to 0)
+    np.fill_diagonal(D, 0)
+    
+    return D
 
 
-def tether(func_mats, struct_mats, matrices_functions=[], get_r2=True, prediction_method='linear'):
-    # this function will take a group-consensus tructural matrix and a group-consensus fuctional matrix and create a
+
+def tether(func_mats, struct_mats, parcellation, matrices_functions=[], get_r=True, prediction_method='linear',
+           include_eucledian=True):
+    # this function will take a structural matrix and a fuctional matrix and create a
     # connectivity matrix based on the Vazquez-Rodrıguez et al. 2019, PNAS
+    # method
+    eucledian_matrix = euclidean_distance(parcellation)
+    func_group_mat, struct_group_mat = group_concensus_maps(func_mats, struct_mats)
 
-    mats = []
-    for subject in struct_mats:
-        mats.append([make_matrix(mat_func, struct_mats) for mat_func in matrices_functions])
+    mats = [mat_func(struct_group_mat) for mat_func in matrices_functions]
+    if include_eucledian:
+        mats.append(eucledian_matrix)
+
     # run over each node in the matrices and create vectors for each matrix for each node
     # then run the regression and get the r value
     n_nodes = np.shape(func_mats)[1]
@@ -73,11 +129,12 @@ def tether(func_mats, struct_mats, matrices_functions=[], get_r2=True, predictio
         r_values = []
     for node in range(n_nodes):
         predictors = get_predictor_vectors(mats, node)
-        functional = func_mats[:, node]
+        functional_truth = func_mats[:, node]
         # run regression
-        node_prediction = predict_function(predictors, functional, prediction_method)
+        node_prediction = predict_function(predictors, functional_truth, prediction_method, return_model=get_r)
         if get_r:
-            r_values.append(get_r_values(node_prediction, functional))
+            r_values.append(get_r_values(node_prediction[0], functional_truth))
+            node_prediction = node_prediction[1]
         node_predictions.append(node_prediction)
     if get_r2:
         return node_predictions, r_values
