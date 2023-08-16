@@ -124,11 +124,30 @@ def shortest_path_length(matrix, threshold=-1):
 
 
 
-def tether(func_mats, struct_mats, parcellation, matrices_functions=[], get_r2=True, prediction_method='linear',
+def tether(func_mats, struct_mats, parcellation, atlas_metadata, hemi_col="Hemi",
+           matrices_functions=(communicability, shortest_path_length), get_r2=True, prediction_method='linear',
            include_eucledian=True):
-    # this function will take a structural matrix and a fuctional matrix and create a
-    # connectivity matrix based on the Vazquez-Rodrıguez et al. 2019, PNAS
-    # method
+    """
+    this function will take a structural matrix and a fuctional matrix and create a predicted functional
+    connectivity matrix and r squared for the prediction based on the Vazquez-Rodrıguez et al. 2019, PNAS
+    method. the matrices used for the prediction are graph metrics derived from the structural matrix.
+    :param func_mats: all subject's functional matrices, NXNXS
+    :param struct_mats: all subject's functional matrices, NXNXS
+    :param parcellation: the parcellation used to create the matrices, in MNI space
+    :param atlas_metadata: a dataframe with the metadata for the parcellation, one column should include the hemisphere
+    marked as L or R
+    :param hemi_col: the column header for the hemisphere column in the metadata. default is "Hemi"
+    :param matrices_functions: a list of functions to apply to the structural matrices before using them to predict the
+    default is communicability and shortest path length. these functions should take a matrix as input and return a
+    matrix of the same size.
+    :param get_r2: boolean, whether to return the r squared value for the prediction. default is True
+    :param prediction_method: string, the method to use for prediction. currently only linear regression is implemented
+    :param include_eucledian: boolean, whether to include the eucledian distance matrix as a predictor. default is True
+    :return: either a list of predicted functional matrices or a list of predicted functional matrices and a list of r
+    squared values
+    """
+
+    atlas_hemiid = atlas_metadata[hemi_col] == 'R'
     eucledian_matrix = euclidean_distance(parcellation)
     func_group_mat, struct_group_mat = group_consensus_mats(func_mats, struct_mats, atlas_hemiid, eucledian_matrix)
 
@@ -146,7 +165,7 @@ def tether(func_mats, struct_mats, parcellation, matrices_functions=[], get_r2=T
         predictors = get_predictor_vectors(mats, node)
         functional_truth = func_mats[:, node]
         # run regression
-        node_prediction = predict_function(predictors, functional_truth, prediction_method, return_model=get_r)
+        node_prediction = predict_function(predictors, functional_truth, prediction_method, return_model=get_r2)
         if get_r2:
             r_values.append(node_prediction[0].score(functional_truth))
             node_prediction = node_prediction[1]
