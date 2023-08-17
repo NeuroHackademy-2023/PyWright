@@ -16,6 +16,8 @@ def group_consensus_mats(func_mats, sc_mats, atlas_hemiid, dist_mat):
     :param func_mats: inputs are a 3D NxNxs FC matrix
     :param sc_mats: a 3D NxNxs SC matrix
     :param atlas_hemiid: a vector of length N that has 0s for left hemisphere and 1s for right hemisphere
+    :param dist_mat: a NxN matrix of the euclidean distance between each pair of nodes, calculated using the
+    euclidean_distance function
     :return: a 2D NxN group consensus FC matrix and a 2D NxN group consensus SC matrix
     """
     if not atlas_hemiid:
@@ -55,7 +57,7 @@ def predict_function(predictors, functional, prediction_method, return_model=Tru
     :return: a predicted functional matrix"""
 
     # standarize predictors
-    predictors = [predictor - np.mean(predictor)/np.std(predictor) for predictor in predictors]
+    predictors = [(predictor - np.mean(predictor))/np.std(predictor) for predictor in predictors]
     # fit multiple linear regression
     if prediction_method == 'linear':
         model = LinearRegression()
