@@ -43,13 +43,17 @@ def get_HCP_sub(preprocessed_file_paths, diffusion_file_paths, nsubs=100):
 
     # Create a client that uses our cache path and that does not try to
     # authenticate with S3.
-    client = S3Client(
+    client_dif = S3Client(
         local_cache_dir=cache_path,
         no_sign_request=True)
 
-    hcp_derivs_path_preproc = S3Path("s3://hcp-openaccess/HCP_1200", client=client)
+    client_hcp = client=S3Client(
+        local_cache_dir=cache_path,
+        profile_name='hcp')
+
+    hcp_derivs_path_preproc = S3Path("s3://hcp-openaccess/HCP_1200", client=client_hcp)
     hcp_derivs_path_diffusion = S3Path("s3://open-neurodata/rokem/hcp1200/afq",
-            client=client)
+            client=client_dif)
 
     for sub in hcp_derivs_path_preproc.glob("*"):
         if os.path.isdir(cache_path):
@@ -127,7 +131,7 @@ def funct_dat_and_mats():
     bold_sigs = []
     mats = []
     for sub, files in get_HCP_sub(['MNINonLinear/fsaverage_LR59k/115825.aparc.59k_fs_LR.dlabel.nii',
-                                   'MNINonLinear/Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_Atlas_1.6mm_hp2000_clean.dtseries.nii'])
+                                   'MNINonLinear/Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_Atlas_1.6mm_hp2000_clean.dtseries.nii']):
         labels = files['MNINonLinear/fsaverage_LR59k/115825.aparc.59k_fs_LR.dlabel.nii']
         bold = files['MNINonLinear/Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_Atlas_1.6mm_hp2000_clean.dtseries.nii']
         bold_sigs.append(con_eff_bold_data(bold, labels))
