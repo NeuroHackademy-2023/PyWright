@@ -74,7 +74,7 @@ def get_connectivity_matrix(tracts, parcellation):
     parcellation = parcellation.get_data()
     tracts.remove_invalid_streamlines()
     tracts = tracts.streamlines
-    new_labels, lookup = utils.reduce_labels(labels.get_fdata())
+    new_labels, lookup = utils.reduce_labels(parcellation.get_fdata())
     m, grouping = utils.connectivity_matrix(tracts, affine_mat, new_labels, return_mapping=True,
                                             mapping_as_streamlines=True)
     return m
