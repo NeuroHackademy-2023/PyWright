@@ -90,7 +90,7 @@ def con_eff_bold_data(data_bold, data_labels):
         # unique lh label
         unique_h = np.unique(data_labels)
         # loop through unique lh labels
-        for label in unique_h[unique_h != 0]:  # for each label that isn't 0
+        for label in unique_h:  # for each label
             label_idx = np.where(data_labels == label)[1]  # get the index of the vertices that match this label
             label_timeseriesda = np.mean(data_bold[:, label_idx],
                                          axis=1)  # take the mean of the vertices within the region
