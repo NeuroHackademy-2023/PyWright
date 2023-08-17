@@ -20,7 +20,9 @@ def group_consensus_mats(func_mats, sc_mats, atlas_hemiid, dist_mat):
     """
     if not atlas_hemiid:
         raise ValueError('need `atlas_hemiid` argument, a N x 1 dimensional array with 0s and 1s for left- and right- hemisphere')
-    
+    if func_mats.shape != sc_mats.shape:
+        raise ValueError('`func_mats` and `sc_mats` must have the same shape')
+
     # compute group-consensus FC matrix by averaging all individual matrices
      group_fcmat = np.mean(func_mats, axis=2)
 
@@ -39,8 +41,7 @@ def get_predictor_vectors(mats, nodes):
     with the same order of nodes.
     :param nodes: node number to get the values for
     :return: a vector for each matrix with the values for the connection of that node to all other nodes"""
-    # gets list of matrices and a node number
-    # returns a vector for each matrix with the values for that node
+
     return [mat[:, nodes] for mat in mats]
 
   
@@ -113,7 +114,8 @@ def shortest_path_length(matrix, threshold=-1):
     :return: a matrix of the shortest path length between each pair of nodes"""
 
     if threshold == -1:
-        pass
+        # make each value the reciprocal of the connection strength
+        matrix = np.reciprocal(matrix)
     else:
         matrix = (matrix > threshold).astype(int)
 
