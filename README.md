@@ -10,6 +10,7 @@ A python package for flexibly examining the intersection of structural and funct
 - `sklearn`
 - `scipy`
 - `netneurotools`
+-  `networkx`
 - `dipy`
 
 ## Usage
