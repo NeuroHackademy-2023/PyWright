@@ -5,8 +5,13 @@ from mpl_toolkits.mplot3d import Axes3D
 # Mock data
 np.random.seed(42)
 coords = np.random.rand(100, 3) * 2 - 1
-rand_mat = np.random.rand(100, 100)
-group_fcmat = (rand_mat + rand_mat.T) / 2
+
+# Mock R^2 values between 0 and 1 for each node
+R2 = np.random.rand(100)
+
+# Size and color of nodes based on R^2
+size = 500 * (1 - R2)  # Inverse proportion to R^2
+colors = plt.cm.viridis(1 - R2)  # Use a colormap, viridis by default; higher R2 -> darker nodes
 
 # Extract coordinates
 x, y, z = zip(*coords)
@@ -16,14 +21,11 @@ fig = plt.figure(figsize=(10, 7))
 ax = fig.add_subplot(111, projection='3d')
 
 # Plot nodes
-ax.scatter(x, y, z, s=50, c='red')
+sc = ax.scatter(x, y, z, s=size, c=colors)
 
-# Plot edges based on connectivity strength
-threshold = 0.9  # Adjust as needed
-for i in range(len(coords)):
-    for j in range(len(coords)):
-        if group_fcmat[i, j] > threshold:
-            ax.plot([x[i], x[j]], [y[i], y[j]], [z[i], z[j]], color='blue', alpha=0.1)
+# Add a colorbar
+cbar = fig.colorbar(sc, ax=ax)
+cbar.set_label('Inverse R^2')
 
-ax.set_title("3D Connectivity Visualization with Mock Data")
+ax.set_title("Spatial Distribution of Structure–Function Correspondence")
 plt.show()
