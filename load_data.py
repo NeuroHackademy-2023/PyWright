@@ -121,7 +121,7 @@ def func_mats(subj_bold, avg_bold_mat):
 
 def struct_mats():
     cms = []
-    for sub, files in get_HCP_sub(["mri/MNINonLinear/aparc+aseg.nii.gz"], ["ses-01/{SUB}_dwi_space-RASMM_model-CSD_desc-prob-afq-clean_tractography.trk"], "diffusion"):
+    for sub, files in get_HCP_sub(["mri/MNINonLinear/aparc+aseg.nii.gz"], ["ses-01/{SUB}_dwi_space-RASMM_model-CSD_desc-prob-afq-clean_tractography.trk"], 10):
         tract_file = files["ses-01/{SUB}_dwi_space-RASMM_model-CSD_desc-prob-afq-clean_tractography.trk"]
         parc = files["mri/MNINonLinear/aparc+aseg.nii.gz"]
         cms.append(get_connectivity_matrix(tract_file, parc))
@@ -131,7 +131,7 @@ def funct_dat_and_mats():
     bold_sigs = []
     mats = []
     for sub, files in get_HCP_sub(['MNINonLinear/fsaverage_LR59k/115825.aparc.59k_fs_LR.dlabel.nii',
-                                   'MNINonLinear/Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_Atlas_1.6mm_hp2000_clean.dtseries.nii']):
+                                   'MNINonLinear/Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_Atlas_1.6mm_hp2000_clean.dtseries.nii'], nsubs=10):
         labels = files['MNINonLinear/fsaverage_LR59k/115825.aparc.59k_fs_LR.dlabel.nii']
         bold = files['MNINonLinear/Results/rfMRI_REST1_7T_PA/rfMRI_REST1_7T_PA_Atlas_1.6mm_hp2000_clean.dtseries.nii']
         bold_sigs.append(con_eff_bold_data(bold, labels))
