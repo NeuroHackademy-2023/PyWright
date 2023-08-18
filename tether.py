@@ -3,9 +3,10 @@
 
 import numpy as np
 import nilearn as nl
+from nilearn.plotting import find_parcellation_cut_coords
 from sklearn.linear_model import LinearRegression
 import nibabel as nib
-from netneurotools.network import struct_consensus
+from netneurotools.networks import struct_consensus
 from scipy.linalg import expm
 import networkx as nx
 
@@ -20,13 +21,13 @@ def group_consensus_mats(func_mats, sc_mats, atlas_hemiid, dist_mat):
     euclidean_distance function
     :return: a 2D NxN group consensus FC matrix and a 2D NxN group consensus SC matrix
     """
-    if not atlas_hemiid:
+    if atlas_hemiid is None:
         raise ValueError('need `atlas_hemiid` argument, a N x 1 dimensional array with 0s and 1s for left- and right- hemisphere')
     if func_mats.shape != sc_mats.shape:
         raise ValueError('`func_mats` and `sc_mats` must have the same shape')
 
     # compute group-consensus FC matrix by averaging all individual matrices
-     group_fcmat = np.mean(func_mats, axis=2)
+    group_fcmat = np.mean(func_mats, axis=2)
 
     # compute group-consensus SC matrix using neurotools from Masic lab @ McGill
     group_scmat = struct_consensus(data = sc_mats,
@@ -58,16 +59,21 @@ def predict_function(predictors, functional, prediction_method, return_model=Tru
 
     # standarize predictors
     predictors = [(predictor - np.mean(predictor))/np.std(predictor) for predictor in predictors]
+    print("standarized predictors size %f" %len(predictors))
     # fit multiple linear regression
     if prediction_method == 'linear':
         model = LinearRegression()
     else:
         raise TypeError(f'{prediction_method} not implemented for prediction method')
-    model.fit(predictors, functional)
+    print(np.array(predictors).shape)
+    print(functional.shape)
+    for pred in predictors:
+        print(len(pred))
+    model.fit(np.transpose(np.array(predictors)), functional)
     # predict functional values
     if return_model:
-        return model, model.predict(predictors)
-    return model.predict(predictors)
+        return model, model.predict(np.transpose(np.array(predictors)))
+    return model.score(np.transpose(np.array(predictors)), functional), model.predict(predictors)
 
 
 
@@ -80,7 +86,7 @@ def euclidean_distance(parcellation):
     """
     if isinstance(parcellation, str):
         parcellation = nib.load(parcellation)
-    coords = nl.find_parcellation_cut_coords(parcellation)
+    coords = find_parcellation_cut_coords(parcellation)
     dist_mat = []
     # for each node in the parcellation, calculate the distance to each other node
     for node in coords:
@@ -122,7 +128,7 @@ def shortest_path_length(matrix, threshold=-1):
         matrix = (matrix > threshold).astype(int)
 
     # compute the shortest path pairs and convert them back to a matrix
-    return nx.floyd_warshall_numpy(nx.from_numpy_matrix(matrix))
+    return nx.floyd_warshall_numpy(nx.from_numpy_array(matrix))
 
 
 
@@ -151,9 +157,12 @@ def tether(func_mats, struct_mats, parcellation, atlas_metadata, hemi_col="Hemi"
     squared values
     """
 
-    atlas_hemiid = atlas_metadata[hemi_col] == 'R'
-    eucledian_matrix = euclidean_distance(parcellation)
-    func_group_mat, struct_group_mat = group_consensus_mats(func_mats, struct_mats, atlas_hemiid, eucledian_matrix)
+    atlas_hemiid = atlas_metadata[hemi_col].values
+    #eucledian_matrix = euclidean_distance(parcellation)
+    #np.save("tether_eucledian_matrix",eucledian_matrix)
+    eucledian_matrix = np.load("tether_eucledian_matrix.npy")
+    eucledian_matrix = eucledian_matrix[:70, :70]
+    func_group_mat, struct_group_mat = group_consensus_mats(func_mats, struct_mats, atlas_hemiid.reshape(-1,1), eucledian_matrix)
 
     mats = [mat_func(struct_group_mat) for mat_func in matrices_functions]
     if include_eucledian:
@@ -162,6 +171,8 @@ def tether(func_mats, struct_mats, parcellation, atlas_metadata, hemi_col="Hemi"
     # run over each node in the matrices and create vectors for each matrix for each node
     # then run the regression and get the r value
     n_nodes = np.shape(func_mats)[1]
+    print("n_nodes:%f" %n_nodes)
+    print("mats size:%F" %len(mats))
     node_predictions = []
     if get_r2:
         r_values = []
@@ -169,9 +180,9 @@ def tether(func_mats, struct_mats, parcellation, atlas_metadata, hemi_col="Hemi"
         predictors = get_predictor_vectors(mats, node)
         functional_truth = func_mats[:, node]
         # run regression
-        node_prediction = predict_function(predictors, functional_truth, prediction_method, return_model=get_r2)
+        r, node_prediction = predict_function(predictors, functional_truth, prediction_method, return_model=get_r2)
         if get_r2:
-            r_values.append(node_prediction[0].score(functional_truth))
+            r_values.append(r)
             node_prediction = node_prediction[1]
         node_predictions.append(node_prediction)
     if get_r2:
